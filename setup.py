@@ -1,4 +1,4 @@
-#! /usr/bin/env/ python
+#! /usr/bin/env python
 #
 # This file is part of TournamentMaster.
 # Copyright (C) 2017  Simon Chen
@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name='TournamentMaster',
-    version='1.0.0',
+    version='2.0.0',
     description='CLI for running tournaments between chess engines',
     url='https://github.com/Khold6458/TournamentMaster',
     author='Simon Chen',
