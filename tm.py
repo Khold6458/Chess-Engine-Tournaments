@@ -20,10 +20,12 @@ import configparser
 import os.path
 from itertools import cycle
 from time import perf_counter
+from datetime import date
 
 import click
 import chess
 import chess.uci
+import chess.pgn
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -36,32 +38,43 @@ def cli():
 
 
 @cli.command(name='game')
-@click.argument('w_eng')
-@click.argument('b_eng')
+@click.argument('w-eng')
+@click.argument('b-eng')
 @click.argument('time', type=int)
 @click.option('--inc', default=0)
-@click.option('--use_book', is_flag=True)
-@click.option('--use_tablebase', is_flag=True)
-@click.option('--draw_plies', default=10)
-@click.option('--draw_thres', default=5)
-@click.option('--win_plies', default=8)
-@click.option('--win_thres', default=650)
+@click.option('--use-book', is_flag=True)
+@click.option('--use-tablebase', is_flag=True)
+@click.option('--draw-plies', default=10)
+@click.option('--draw-thres', default=5)
+@click.option('--win-plies', default=8)
+@click.option('--win-thres', default=650)
+@click.option('--verbose-pgn', is_flag=True)
+@click.option('--event', default='Single Game')
+@click.option('--site', default='?')
+@click.option('round_no', '--round', default='?')
 def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
-              draw_plies, draw_thres, win_plies, win_thres):
-    """ Play an engine-vs-engine game. Return 1, 0, or -1, corresponding to
-        white win, draw, or black win.
+              draw_plies, draw_thres, win_plies, win_thres,
+              verbose_pgn, event, site, round_no):
+    """
+    Play an engine-vs-engine game.
+    Append the resulting PGN to "./{event}.png" and
+    return 1, 0, or -1, corresponding to white win, draw, or black win.
 
-        w_eng and b_eng must correspond to the name of a section in
-        the config file.
+    w_eng and b_eng must correspond to the name of a section in
+    the config file.
 
-        time (in seconds) and inc (in milliseconds) define the time control.
+    time (in seconds) and inc (in milliseconds) define the time control.
 
-        if use_book, use the opening book defined in the config file.
+    if use_book, use the opening book defined in the config file.
 
-        if use_tablebase, use a tablebase to adjudicate positions
+    if use_tablebase, use a tablebase to adjudicate positions.
 
-        draw_plies, draw_thres, win_plies, win_thres are used to adjudicate
-        the game.
+    draw_plies, draw_thres, win_plies, win_thres are used to adjudicate
+    the game.
+
+    if verbose_pgn, save (eval, depth, time) info as pgn comments.
+
+    event, site, round_no are used as pgn headers.
     """
     if not (w_eng in config and b_eng in config):
         raise ValueError('Invalid engine names.')
@@ -77,6 +90,8 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         engine.info_handlers.append(handler)
 
     board = chess.Board()
+    pgn = chess.pgn.Game()
+    pgn_node = pgn.root()
     w_time = time * 1000
     b_time = time * 1000
     draw_count = 0
@@ -97,9 +112,20 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         time_spent = round((perf_counter() - start) * 1000)
         board.push(move)
 
-        score = handler.info["score"][1].cp
+        score = handler.info['score'][1].cp
+        mate = handler.info['score'][1].mate
+
+        comment = ''
+        if verbose_pgn:
+            if score is None:
+                score_str = f'{"+" if mate >= 0 else "-"}M{mate}'
+            else:
+                score_str = f'{score / 100:+.2f}'
+            depth = str(handler.info.get('depth', '0'))
+            comment = f'{score_str}/{depth} {time_spent / 1000:.3f}'
+        pgn_node = pgn_node.add_variation(move, comment)
+
         if score is None:
-            mate = handler.info["score"][1].mate
             if mate > 0:
                 score = 9999
             elif mate < 0:
@@ -151,6 +177,23 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
 
     for engine in engines:
         engine.quit()
+
+    pgn.headers['Event'] = event
+    pgn.headers['Site'] = site
+    pgn.headers['Round'] = round_no
+    pgn.headers['White'] = w_eng
+    pgn.headers['Black'] = b_eng
+    pgn.headers['Date'] = str(date.today())
+    pgn.headers['Result'] = ('1/2-1/2', '1-0', '0-1')[result]
+    print(' '.join((pgn.headers["White"],
+                    pgn.headers["Result"][:3],
+                    pgn.headers["Black"])))
+
+    path = os.path.abspath(f'./{event}.pgn')
+    print(f'writing pgn to {path}')
+    with open(path, 'a') as f:
+        pgn.accept(chess.pgn.FileExporter(f))
+
     return result
 
 
