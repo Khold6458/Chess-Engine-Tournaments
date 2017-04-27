@@ -31,6 +31,8 @@ import chess.polyglot
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          'engines.ini'))
+config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         'tm.ini'))
 
 
 @click.group()
@@ -81,7 +83,7 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         raise ValueError('Invalid engine names.')
 
     engines = [chess.uci.popen_engine(os.path.join(
-        config.get('GLOBAL', 'basepath'),
+        config.get('TournamentMaster', 'basepath'),
         engine,
         config.get(engine, 'exe')
     )) for engine in (w_eng, b_eng)]
@@ -105,7 +107,8 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         engine.ucinewgame()
 
     if use_book:
-        with chess.polyglot.open_reader(config.get('GLOBAL', 'bookpath')) as book:
+        with chess.polyglot.open_reader(config.get('TournamentMaster',
+                                                   'bookpath')) as book:
             while True:
                 try:
                     move = book.weighted_choice(board).move()
