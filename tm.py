@@ -122,7 +122,7 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
             else:
                 score_str = f'{score / 100:+.2f}'
             depth = str(handler.info.get('depth', '0'))
-            comment = f'{score_str}/{depth} {time_spent / 1000:.3f}'
+            comment = f'{score_str}/{depth} {time_spent / 1000:.2f}s'
         pgn_node = pgn_node.add_variation(move, comment)
 
         if score is None:
