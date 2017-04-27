@@ -154,12 +154,12 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         else:
             win_count = 0
 
-        if draw_count == draw_plies:
+        if draw_count >= draw_plies:
             print('draw agreed')
             result = 0
             break
 
-        if win_count == win_plies and score < 0:
+        if win_count >= win_plies and score < 0:
             if current_player == chess.WHITE:
                 print('white resigns')
                 result = -1
