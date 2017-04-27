@@ -4,4 +4,4 @@ dist/
 venv/
 *.egg-info/
 
-engines.ini
+*.ini

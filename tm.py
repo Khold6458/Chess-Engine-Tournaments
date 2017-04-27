@@ -107,9 +107,10 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         engine.ucinewgame()
 
     if use_book:
+        book_depth = config.getint('TournamentMaster', 'bookdepth')
         with chess.polyglot.open_reader(config.get('TournamentMaster',
                                                    'bookpath')) as book:
-            while True:
+            while board.fullmove_number <= book_depth:
                 try:
                     move = book.weighted_choice(board).move()
                     board.push(move)
