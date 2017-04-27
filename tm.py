@@ -26,10 +26,13 @@ import click
 import chess
 import chess.uci
 import chess.pgn
+import chess.polyglot
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          'engines.ini'))
+config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         'tm.ini'))
 
 
 @click.group()
@@ -42,8 +45,8 @@ def cli():
 @click.argument('b-eng')
 @click.argument('time', type=int)
 @click.option('--inc', default=0)
-@click.option('--use-book', is_flag=True)
-@click.option('--use-tablebase', is_flag=True)
+@click.option('use_book', '--book/--no-book', default=True)
+@click.option('use_tablebase', '--tb/--no-tb', default=True)
 @click.option('--draw-plies', default=10)
 @click.option('--draw-thres', default=5)
 @click.option('--win-plies', default=8)
@@ -80,7 +83,7 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         raise ValueError('Invalid engine names.')
 
     engines = [chess.uci.popen_engine(os.path.join(
-        config.get('GLOBAL', 'basepath'),
+        config.get('TournamentMaster', 'basepath'),
         engine,
         config.get(engine, 'exe')
     )) for engine in (w_eng, b_eng)]
@@ -102,6 +105,21 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         engine.setoption(config['DEFAULT'])
         engine.setoption(config[b_eng if index else w_eng])
         engine.ucinewgame()
+
+    if use_book:
+        book_depth = config.getint('TournamentMaster', 'bookdepth')
+        with chess.polyglot.open_reader(config.get('TournamentMaster',
+                                                   'bookpath')) as book:
+            while board.fullmove_number <= book_depth:
+                try:
+                    move = book.weighted_choice(board).move()
+                    board.push(move)
+                    pgn_node = pgn_node.add_variation(move)
+                except IndexError:
+                    break
+        if board.turn == chess.BLACK:
+            engines.reverse()
+            info.reverse()
 
     for engine, handler in cycle(zip(engines, info)):
         engine.position(board)
