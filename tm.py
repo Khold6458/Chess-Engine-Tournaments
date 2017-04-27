@@ -26,6 +26,7 @@ import click
 import chess
 import chess.uci
 import chess.pgn
+import chess.polyglot
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -102,6 +103,19 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         engine.setoption(config['DEFAULT'])
         engine.setoption(config[b_eng if index else w_eng])
         engine.ucinewgame()
+
+    if use_book:
+        with chess.polyglot.open_reader(config.get('GLOBAL', 'bookpath')) as book:
+            while True:
+                try:
+                    move = book.weighted_choice(board).move()
+                    board.push(move)
+                    pgn_node = pgn_node.add_variation(move)
+                except IndexError:
+                    break
+        if board.turn == chess.BLACK:
+            engines.reverse()
+            info.reverse()
 
     for engine, handler in cycle(zip(engines, info)):
         engine.position(board)
