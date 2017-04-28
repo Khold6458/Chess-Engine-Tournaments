@@ -21,6 +21,7 @@ import os.path
 from itertools import cycle
 from time import perf_counter
 from datetime import date
+from importlib import import_module
 
 import click
 import chess
@@ -34,6 +35,7 @@ config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          'engines.ini'))
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          'tm.ini'))
+FORMATS = ('roundrobin', )
 
 
 @click.group()
@@ -41,24 +43,46 @@ def cli():
     pass
 
 
-@cli.command(name='game')
-@click.argument('w-eng')
-@click.argument('b-eng')
-@click.argument('time', type=int)
+@cli.command()
+@click.argument('engines', nargs=-1)
+@click.option('--time', type=int, required=True)
 @click.option('--inc', default=0)
+@click.option('tournament_format', '--format',
+              type=click.Choice(FORMATS), default='roundrobin')
+@click.option('--rounds', default=1)
 @click.option('use_book', '--book/--no-book', default=True)
 @click.option('use_tablebase', '--tb/--no-tb', default=True)
 @click.option('--draw-plies', default=10)
 @click.option('--draw-thres', default=5)
 @click.option('--win-plies', default=8)
 @click.option('--win-thres', default=650)
+@click.option('pgn_path', '--pgn', type=click.Path(resolve_path=True),
+              required=True)
 @click.option('--verbose-pgn', is_flag=True)
-@click.option('--event', default='Single Game')
+@click.option('--event', default='?')
 @click.option('--site', default='?')
-@click.option('round_no', '--round', default='?')
+def new(engines, time, inc, tournament_format, rounds,
+        draw_plies, draw_thres, win_plies, win_thres,
+        use_book, use_tablebase, pgn_path, verbose_pgn, event, site):
+    """Run a new tournament"""
+    manager = import_module(tournament_format)
+    tournament = manager.new_tournament(engines, rounds)
+
+    for round_no, (white, black) in tournament:
+        tournament.update(play_game(
+            w_eng=white, b_eng=black,
+            time=time, inc=inc,
+            use_book=use_book, use_tablebase=use_tablebase,
+            draw_plies=draw_plies, draw_thres=draw_thres,
+            win_plies=win_plies, win_thres=win_thres,
+            event=event, site=site, round_no=str(round_no),
+            pgn_path=pgn_path, verbose_pgn=verbose_pgn
+        ))
+
+
 def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
               draw_plies, draw_thres, win_plies, win_thres,
-              verbose_pgn, event, site, round_no):
+              pgn_path, verbose_pgn, event, site, round_no):
     """
     Play an engine-vs-engine game.
     Append the resulting PGN to "./{event}.png" and
@@ -225,9 +249,8 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
                     pgn.headers["Result"][:3],
                     pgn.headers["Black"])))
 
-    path = os.path.abspath(f'./{event}.pgn')
-    print(f'writing pgn to {path}')
-    with open(path, 'a') as f:
+    print(f'writing pgn to {pgn_path}')
+    with open(pgn_path, 'a') as f:
         pgn.accept(chess.pgn.FileExporter(f))
 
     return result
