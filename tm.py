@@ -27,6 +27,7 @@ import chess
 import chess.uci
 import chess.pgn
 import chess.polyglot
+import chess.syzygy
 
 config = configparser.ConfigParser()
 config.read(os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -100,6 +101,10 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
     draw_count = 0
     win_count = 0
 
+    if use_tablebase:
+        tb = chess.syzygy.open_tablebases(config.get('TournamentMaster',
+                                                     'syzygypath'))
+
     for index, engine in enumerate(engines):
         engine.uci()
         engine.setoption(config['DEFAULT'])
@@ -122,6 +127,16 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
             info.reverse()
 
     for engine, handler in cycle(zip(engines, info)):
+        if use_tablebase:
+            wdl = tb.get_wdl(board)
+            if wdl is not None:
+                if abs(wdl) == 2:
+                    result = 1 if (board.turn == chess.WHITE) ^ (wdl < 0) else -1
+                else:
+                    result = 0
+                print('tablebase position')
+                break
+
         engine.position(board)
         current_player = board.turn
 
@@ -195,6 +210,9 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
 
     for engine in engines:
         engine.quit()
+
+    if use_tablebase:
+        tb.close()
 
     pgn.headers['Event'] = event
     pgn.headers['Site'] = site
