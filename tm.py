@@ -241,8 +241,8 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
     pgn.headers['Event'] = event
     pgn.headers['Site'] = site
     pgn.headers['Round'] = round_no
-    pgn.headers['White'] = w_eng
-    pgn.headers['Black'] = b_eng
+    pgn.headers['White'] = config.get(w_eng, 'name')
+    pgn.headers['Black'] = config.get(b_eng, 'name')
     pgn.headers['Date'] = str(date.today())
     pgn.headers['Result'] = ('1/2-1/2', '1-0', '0-1')[result]
     print(' '.join((pgn.headers["White"],
