@@ -177,7 +177,7 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
         comment = ''
         if verbose_pgn:
             if score is None:
-                score_str = f'{"+" if mate >= 0 else "-"}M{mate}'
+                score_str = f'{"+" if mate >= 0 else "-"}M{abs(mate)}'
             else:
                 score_str = f'{score / 100:+.2f}'
             depth = str(handler.info.get('depth', '0'))
