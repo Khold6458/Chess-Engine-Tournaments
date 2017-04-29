@@ -82,7 +82,8 @@ def new(engines, time, inc, tournament_format, rounds,
 
 def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
               draw_plies, draw_thres, win_plies, win_thres,
-              pgn_path, verbose_pgn, event, site, round_no):
+              pgn_path, verbose_pgn, event, site, round_no,
+              board=None):
     """
     Play an engine-vs-engine game.
     Add the game (as PGN) to the file at pgn_path, and
@@ -105,6 +106,8 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
     if verbose_pgn, save (eval, depth, time) info as pgn comments.
 
     event, site, round_no are used as pgn headers.
+
+    board can be specified to supply a chess.Board to begin the game from
     """
     if not (w_eng in config and b_eng in config):
         raise ValueError('Invalid engine names.')
@@ -119,9 +122,11 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
     for engine, handler in zip(engines, info):
         engine.info_handlers.append(handler)
 
-    board = chess.Board()
-    pgn = chess.pgn.Game()
-    pgn_node = pgn.root()
+    if board is None:
+        board = chess.Board()
+
+    pgn = chess.pgn.Game.from_board(board)
+    pgn_node = pgn.end()
     w_time = time * 1000
     b_time = time * 1000
     draw_count = 0
