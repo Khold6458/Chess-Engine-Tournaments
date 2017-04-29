@@ -50,6 +50,7 @@ def cli():
 @click.option('tournament_format', '--format',
               type=click.Choice(FORMATS), default='roundrobin')
 @click.option('--rounds', default=1)
+@click.option('--fair-openings', is_flag=True)
 @click.option('use_book', '--book/--no-book', default=True)
 @click.option('use_tablebase', '--tb/--no-tb', default=True)
 @click.option('--draw-plies', default=10)
@@ -61,23 +62,46 @@ def cli():
 @click.option('--verbose-pgn', is_flag=True)
 @click.option('--event', default='?')
 @click.option('--site', default='?')
-def new(engines, time, inc, tournament_format, rounds,
+def new(engines, time, inc, tournament_format, rounds, fair_openings,
         draw_plies, draw_thres, win_plies, win_thres,
         use_book, use_tablebase, pgn_path, verbose_pgn, event, site):
     """Run a new tournament"""
     manager = import_module(tournament_format)
     tournament = manager.new_tournament(engines, rounds)
+    board = None
 
     for round_no, (white, black) in tournament:
-        tournament.update(play_game(
-            w_eng=white, b_eng=black,
-            time=time, inc=inc,
-            use_book=use_book, use_tablebase=use_tablebase,
-            draw_plies=draw_plies, draw_thres=draw_thres,
-            win_plies=win_plies, win_thres=win_thres,
-            event=event, site=site, round_no=str(round_no),
-            pgn_path=pgn_path, verbose_pgn=verbose_pgn
-        ))
+        kwargs = {
+            'w_eng': white, 'b_eng': black, 'time': time, 'inc': inc,
+            'use_book': use_book, 'use_tablebase': use_tablebase,
+            'draw_plies': draw_plies, 'draw_thres': draw_thres,
+            'win_plies': win_plies, 'win_thres': win_thres,
+            'event': event, 'site': site, 'round_no': str(round_no),
+            'pgn_path': pgn_path, 'verbose_pgn': verbose_pgn
+        }
+        if fair_openings:
+            # NOTE: fair_openings will make it such that the same opening
+            # is played two games in a row. this does not necessarily have
+            # the expected result if the tournament is not set up to return
+            # its pairings in a compatiable manner.
+            if board is None:
+                board = chess.Board()
+                book_depth = config.getint('TournamentMaster', 'bookdepth')
+                with chess.polyglot.open_reader(
+                    config.get('TournamentMaster', 'bookpath')
+                ) as book:
+                    while board.fullmove_number <= book_depth:
+                        try:
+                            move = book.weighted_choice(board).move()
+                            board.push(move)
+                        except IndexError:
+                            break
+                kwargs['board'] = board.copy()
+            else:
+                kwargs['board'] = board.copy()
+                board = None
+
+        tournament.update(play_game(**kwargs))
 
 
 def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
@@ -153,9 +177,10 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
                     pgn_node = pgn_node.add_variation(move)
                 except IndexError:
                     break
-        if board.turn == chess.BLACK:
-            engines.reverse()
-            info.reverse()
+
+    if board.turn == chess.BLACK:
+        engines.reverse()
+        info.reverse()
 
     for engine, handler in cycle(zip(engines, info)):
         if use_tablebase:
