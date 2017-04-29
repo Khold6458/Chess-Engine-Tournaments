@@ -85,7 +85,7 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
               pgn_path, verbose_pgn, event, site, round_no):
     """
     Play an engine-vs-engine game.
-    Append the resulting PGN to "./{event}.png" and
+    Add the game (as PGN) to the file at pgn_path, and
     return 1, 0, or -1, corresponding to white win, draw, or black win.
 
     w_eng and b_eng must correspond to the name of a section in
@@ -93,9 +93,11 @@ def play_game(w_eng, b_eng, time, inc, use_book, use_tablebase,
 
     time (in seconds) and inc (in milliseconds) define the time control.
 
-    if use_book, use the opening book defined in the config file.
+    if use_book, use an opening book defined by
+    bookpath and bookdepth in the config file.
 
-    if use_tablebase, use a tablebase to adjudicate positions.
+    if use_tablebase, use a tablebase (configured by syzygypath)
+    to adjudicate positions.
 
     draw_plies, draw_thres, win_plies, win_thres are used to adjudicate
     the game.
