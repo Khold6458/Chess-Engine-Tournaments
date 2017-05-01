@@ -44,6 +44,31 @@ def cli():
 
 
 @cli.command()
+@click.argument('output-path', type=click.Path(resolve_path=True))
+@click.option('n', '-n', '--n-games', default=1)
+def openings(n, output_path):
+    """Generate openings from book"""
+    print(f'writing {n} openings to {output_path}')
+
+    book_depth = config.getint('TournamentMaster', 'bookdepth')
+    with chess.polyglot.open_reader(
+        config.get('TournamentMaster', 'bookpath')
+    ) as book:
+        with open(output_path, 'a') as f:
+            for _ in range(n):
+                board = chess.Board()
+                while board.fullmove_number <= book_depth:
+                    try:
+                        move = book.weighted_choice(board).move()
+                        board.push(move)
+                    except IndexError:
+                        break
+
+                pgn = chess.pgn.Game.from_board(board)
+                pgn.accept(chess.pgn.FileExporter(f))
+
+
+@cli.command()
 @click.argument('engines', nargs=-1)
 @click.option('--time', type=int, required=True)
 @click.option('--inc', default=0)
