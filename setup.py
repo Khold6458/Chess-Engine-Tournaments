@@ -20,7 +20,7 @@ from setuptools import setup
 
 setup(
     name='TournamentMaster',
-    version='3.0.0',
+    version='3.1.0',
     description='CLI for running tournaments between chess engines',
     url='https://github.com/Khold6458/TournamentMaster',
     author='Simon Chen',
